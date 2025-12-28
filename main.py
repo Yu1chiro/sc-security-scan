@@ -1,5 +1,6 @@
 import os
 import re
+import sys
 import datetime
 from concurrent.futures import ThreadPoolExecutor
 from fpdf import FPDF
@@ -16,16 +17,15 @@ console = Console()
 # --- THE "NO COUNTER" BANNER ---
 ASCII_ART = """
 [bold #7dcfff]
-███████╗ ██████╗    ███████╗███████╗ ██████╗██╗   ██╗██████╗ ██╗████████╗██╗   ██╗    ███████╗ ██████╗ █████╗ ███╗   ██╗
-██╔════╝██╔════╝    ██╔════╝██╔════╝██╔════╝██║   ██║██╔══██╗██║╚══██╔══╝╚██╗ ██╔╝    ██╔════╝██╔════╝██╔══██╗████╗  ██║
-███████╗██║         ███████╗█████╗  ██║     ██║   ██║██████╔╝██║   ██║    ╚████╔╝     ███████╗██║     ███████║██╔██╗ ██║
-╚════██║██║         ╚════██║██╔══╝  ██║     ██║   ██║██╔══██╗██║   ██║     ╚██╔╝      ╚════██║██║     ██╔══██║██║╚██╗██║
-███████║╚██████╗    ███████║███████╗╚██████╗╚██████╔╝██║  ██║██║   ██║      ██║       ███████║╚██████╗██║  ██║██║ ╚████║
-╚══════╝ ╚═════╝    ╚══════╝╚══════╝ ╚═════╝ ╚═════╝ ╚═╝  ╚═╝╚═╝   ╚═╝      ╚═╝       ╚══════╝ ╚═════╝╚═╝  ╚═╝╚═╝  ╚═══╝
-                                                                                                                        
+██╗     ███████╗ ██████╗    ███████╗ ██████╗ █████╗ ███╗   ██╗
+██║     ██╔════╝██╔════╝    ██╔════╝██╔════╝██╔══██╗████╗  ██║
+██║     ███████╗██║         ███████╗██║     ███████║██╔██╗ ██║
+██║     ╚════██║██║         ╚════██║██║     ██╔══██║██║╚██╗██║
+███████╗███████║╚██████╗    ███████║╚██████╗██║  ██║██║ ╚████║
+╚══════╝╚══════╝ ╚═════╝    ╚══════╝ ╚═════╝╚═╝  ╚═╝╚═╝  ╚═══╝
+                                                                                                                                                                                      
 [/bold #7dcfff]
-[bold #bb9af7]  > Laravel Security Code Scan - Yuichiro  <[/bold #bb9af7]
-[bold #565f89]       [ EXPERT MODE: SEMANTIC & REMEDIATION ACTIVE ] [/bold #565f89]
+[bold #bb9af7]  > Laravel Security Code Scan for production - by Yuichiro  <[/bold #bb9af7]
 """
 
 # --- SEMANTIC RULES & DATABASE ---
@@ -80,7 +80,7 @@ class PDFReport(FPDF):
     def header(self):
         self.set_font('helvetica', 'B', 16)
         self.set_text_color(33, 150, 243)
-        self.write(10, 'YUICHIRO ADVANCED SECURITY AUDIT\n')
+        self.write(10, 'Audit Reporting Scan\n')
         self.set_font('helvetica', 'I', 10)
         self.set_text_color(100, 100, 100)
         self.write(5, 'Strict Semantic Analysis & Remediation Report\n')
@@ -90,72 +90,65 @@ class PDFReport(FPDF):
     def footer(self):
         self.set_y(-15)
         self.set_font('helvetica', 'I', 8)
-        self.write(10, f'Confidential - Yuichiro Security | Page {self.page_no()}')
+        self.write(10, f'Confidential - SC Security Scan | Page {self.page_no()}')
 
-def generate_pdf(results, target_dir):
+def generate_pdf(results, target_dir, save_dir):
     pdf = PDFReport()
     pdf.set_auto_page_break(auto=True, margin=15)
     pdf.add_page()
     
-    # 1. SCAN SUMMARY
+    # 1. SUMMARY
     pdf.set_font("helvetica", 'B', 14)
-    pdf.write(10, "1. SCAN SUMMARY\n")
+    pdf.write(10, "1. AUDIT SUMMARY\n")
     pdf.set_font("helvetica", '', 10)
-    pdf.write(7, f"Project Target  : {target_dir}\n")
-    pdf.write(7, f"Timestamp       : {datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S')}\n")
-    pdf.write(7, f"Total Findings  : {len(results)} issues detected\n")
-    pdf.write(7, "-" * 50 + "\n\n")
+    pdf.write(7, f"Project Target : {target_dir}\n")
+    pdf.write(7, f"Scan Date      : {datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S')}\n")
+    pdf.write(7, f"Total Findings : {len(results)} issues detected\n")
+    pdf.write(7, "-" * 60 + "\n\n")
 
-    # 2. DETAILED FINDINGS
+    # 2. FINDINGS
     pdf.set_font("helvetica", 'B', 14)
-    pdf.write(10, "2. DETAILED FINDINGS AND ANALYSIS\n\n")
+    pdf.write(10, "2. DETAILED FINDINGS\n\n")
 
     for i, item in enumerate(results, 1):
-        # Header Masalah
         pdf.set_font("helvetica", 'B', 11)
-        # Warna teks manual untuk Severity
         if item['severity'] == "CRITICAL": pdf.set_text_color(200, 0, 0)
         elif item['severity'] == "HIGH": pdf.set_text_color(255, 69, 0)
         else: pdf.set_text_color(0, 0, 0)
         
-        pdf.write(8, f"FINDING #{i}: [{item['severity']}] {item['type']}\n")
-        
-        # Detail Tanpa Tabel
+        pdf.write(8, f"ISSUE #{i}: [{item['severity']}] {item['type']}\n")
         pdf.set_text_color(0, 0, 0)
         pdf.set_font("helvetica", '', 10)
-        pdf.write(6, f"   Location    : {item['file']} (Line {item['line']})\n")
-        pdf.write(6, f"   Description : {item['desc']}\n")
+        pdf.write(6, f"   File     : {item['file']} (Line {item['line']})\n")
+        pdf.write(6, f"   Risk     : {item['desc']}\n")
         
-        # Remediation
         pdf.set_font("helvetica", 'B', 10)
         pdf.set_text_color(0, 100, 0)
-        pdf.write(6, "   REMEDIATION STEPS:\n")
-        pdf.set_font("helvetica", '', 9)
-        # Pastikan teks pembersihan tidak mengandung karakter non-ascii
+        pdf.write(6, "   REMEDIATION:\n")
+        pdf.set_font("helvetica", '', 10)
         pdf.write(5, f"   {item['remediation']}\n")
         
         pdf.ln(5)
         pdf.set_text_color(0, 0, 0)
-        pdf.write(5, "=" * 80 + "\n\n")
+        pdf.write(5, "-" * 90 + "\n\n")
 
-    # 3. EXPERT CHEATSHEET (SAFE SYMBOLS)
+    # 3. CHEATSHEET
     pdf.add_page()
     pdf.set_font("helvetica", 'B', 14)
     pdf.set_text_color(33, 150, 243)
-    pdf.write(10, "3. SECURITY RESEARCHER CHEATSHEET\n")
+    pdf.write(10, "3. SECURITY CHEATSHEET\n")
     pdf.ln(5)
-    
     pdf.set_text_color(0, 0, 0)
     for title, content in CHEATSHEET:
         pdf.set_font("helvetica", 'B', 11)
-        # Menggunakan '-' sebagai pengganti bullet point agar tidak error encoding
         pdf.write(8, f"- {title}\n")
         pdf.set_font("helvetica", '', 10)
         pdf.write(6, f"  {content}\n\n")
 
-    report_name = f"Audit_Report_{datetime.datetime.now().strftime('%H%M%S')}.pdf"
-    pdf.output(report_name)
-    return report_name
+    report_name = f"SC_Audit_Report_{datetime.datetime.now().strftime('%H%M%S')}.pdf"
+    full_path = os.path.join(save_dir, report_name)
+    pdf.output(full_path)
+    return full_path
 
 def scan_file(file_info):
     file_path, target_dir = file_info
@@ -196,9 +189,16 @@ def main():
     os.system('cls' if os.name == 'nt' else 'clear')
     console.print(Panel(ASCII_ART, border_style="#7aa2f7", expand=False))
     
-    target_dir = questionary.path("Target Laravel Directory:").ask()
+    # Path lokasi exe/script berada
+    if getattr(sys, 'frozen', False):
+        exe_root = os.path.dirname(sys.executable)
+    else:
+        exe_root = os.path.dirname(os.path.abspath(__file__))
+
+    target_dir = questionary.path("Your path directory code : ").ask()
     if not target_dir: return
 
+    # Discovery
     files_to_scan = []
     exclude = ["vendor", "node_modules", "storage", ".git", "public", "tests"]
     for root, _, files in os.walk(target_dir):
@@ -208,15 +208,8 @@ def main():
                 files_to_scan.append((os.path.join(root, file), target_dir))
 
     all_findings = []
-    with Progress(
-        SpinnerColumn(),
-        TextColumn("[progress.description]{task.description}"),
-        BarColumn(bar_width=40),
-        TextColumn("[progress.percentage]{task.percentage:>3.0f}%"),
-        console=console
-    ) as progress:
-        task = progress.add_task(f"[cyan]Deep Semantic Audit...", total=len(files_to_scan))
-        
+    with Progress(SpinnerColumn(), TextColumn("[progress.description]{task.description}"), BarColumn(), console=console) as progress:
+        task = progress.add_task(f"[cyan]Scanning {len(files_to_scan)} files...", total=len(files_to_scan))
         with ThreadPoolExecutor(max_workers=os.cpu_count()) as executor:
             futures = [executor.submit(scan_file, f) for f in files_to_scan]
             for future in futures:
@@ -225,22 +218,25 @@ def main():
                 progress.update(task, advance=1)
 
     if not all_findings:
-        console.print(Panel("[bold green]✅ SYSTEM SECURE: No critical semantic flaws found.[/bold green]"))
+        console.print(Panel("[bold green]✅ AUDIT PASSED: Basis kode terlihat aman.[/bold green]"))
     else:
-        table = Table(title="Critical Semantic Issues Found", show_lines=True)
-        table.add_column("Severity", justify="center")
-        table.add_column("Issue Type")
+        table = Table(title="Vulnerability Detection List", show_lines=True)
+        table.add_column("No", justify="center")
+        table.add_column("Severity", style="bold")
+        table.add_column("Type")
         table.add_column("Location")
-        
-        for f in all_findings:
+        for idx, f in enumerate(all_findings, 1):
             color = "red" if f['severity'] in ['CRITICAL', 'HIGH'] else "yellow"
-            table.add_row(f"[{color}]{f['severity']}[/{color}]", f['type'], f"{f['file']}:{f['line']}")
-        
+            table.add_row(str(idx), f"[{color}]{f['severity']}[/{color}]", f['type'], f"{f['file']}:{f['line']}")
         console.print(table)
 
         if questionary.confirm("Generate Expert PDF Report with Remediation?").ask():
-            report_path = generate_pdf(all_findings, target_dir)
-            console.print(f"[bold green]✔ Report Generated: {report_path}[/bold green]")
+            save_dir = questionary.path("Pilih folder simpan (Enter untuk default):", default=exe_root).ask()
+            if not save_dir: save_dir = exe_root
+            
+            with console.status("[bold yellow]Mengekspor laporan..."):
+                report_path = generate_pdf(all_findings, target_dir, save_dir)
+            console.print(f"[bold green]✔ Laporan berhasil disimpan: {report_path}[/bold green]")
 
 if __name__ == "__main__":
     main()
